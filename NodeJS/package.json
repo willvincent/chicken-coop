@@ -1,0 +1,14 @@
+{
+  "name": "arduino-chicken-coop",
+  "version": "0.1.0",
+  "description": "MQTT broker and web interface for an arduino controlled chicken coop.",
+  "author": "Will Vincent <will@willvincent.com>",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "primus": "3.0.x",
+    "express": "4.2.x",
+    "sequelize": "3.2.x"
+  }
+}
