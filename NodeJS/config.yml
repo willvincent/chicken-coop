@@ -1,0 +1,24 @@
+db:
+  host: 127.0.0.1
+  user: chicken_coop
+  pass: supersecret
+  db_name: chicken_coop
+  dialect: mysql # can be mysql, mariadb, sqlite, postgres or mssql
+  storage: # only for sqllite. relative path to db file.
+  pool:
+    max: 5
+    min: 0
+    idle: 10000
+web:
+  host: 127.0.0.1 # leave blank to accept connections on any available IP address
+  port: 8000
+mqtt:
+  host: 127.0.0.1 # leave blank to accept connections on any available IP address
+  port: 1883
+  stats: false
+  publishNewClient: true
+  maxInflightMessages: 1024
+  backend:
+    json: false
+    wildcardOne: +
+    wildcardSome: '#'
