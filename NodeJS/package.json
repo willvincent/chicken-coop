@@ -10,6 +10,7 @@
     "mosca": "0.30.x",
     "primus": "3.0.x",
     "express": "4.2.x",
-    "sequelize": "3.2.x"
+    "sequelize": "3.2.x",
+    "mysql": "2.7.x"
   }
 }
