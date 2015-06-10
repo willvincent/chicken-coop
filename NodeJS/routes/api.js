@@ -3,10 +3,7 @@ module.exports = function(app, express) {
 
 
   router.get('/temp', function (req, res) {
-    res.json({ message: "Hello from temps" });
-  });
-  router.post('/temp', function (req, res) {
-    res.json({ message: "Hello from temps" });
+    res.json({ message: "Hello from temp!" });
   });
 
   router.get('/light', function (req, res) {

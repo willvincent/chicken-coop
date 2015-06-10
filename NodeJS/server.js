@@ -21,7 +21,7 @@ app.use(function(req, res) {
 });
 
 mqttServer.on('ready', function() {
-  console.log('MQTT Broker listening on port %s', config.mqtt.port);
+  console.log('MQTT Broker listening at %s on port %s', config.mqtt.host, config.mqtt.port);
 });
 
 var server = app.listen(config.web.port, config.web.host, function() {

@@ -8,7 +8,8 @@ if (config.db.dialect == "sqlite") {
     host: config.db.host,
     dialect: config.db.dialect,
     pool: config.db.pool,
-    storage: config.db.storage
+    storage: config.db.storage,
+    logging: false
   }
 }
 else {
@@ -16,6 +17,7 @@ else {
     host: config.db.host,
     dialect: config.db.dialect,
     pool: config.db.pool,
+    logging: false
   }
 }
 

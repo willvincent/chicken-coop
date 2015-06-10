@@ -4,7 +4,7 @@ db:
   pass: supersecret
   db_name: chicken_coop
   dialect: mysql # can be mysql, mariadb, sqlite, postgres or mssql
-  storage: # only for sqllite. relative path to db file.
+  storage: # only for sqlite. relative path to db file.
   pool:
     max: 5
     min: 0
