@@ -67,6 +67,7 @@ app.controller('AppCtrl', ['$scope', '$http', '$mdSidenav', '$window', '$filter'
       $scope.items = data.statuses;
     }
     if (typeof data.lightReadings != 'undefined') {
+      $scope.lightData = [];
       data.lightReadings.forEach(function(reading) {
         $scope.lightData.push([reading.createdAt, reading.reading]);
       });
@@ -75,6 +76,7 @@ app.controller('AppCtrl', ['$scope', '$http', '$mdSidenav', '$window', '$filter'
       }
     }
     if (typeof data.tempReadings != 'undefined') {
+      $scope.tempData = [];
       data.tempReadings.forEach(function(reading) {
         $scope.tempData.push([reading.createdAt, reading.reading]);
       });

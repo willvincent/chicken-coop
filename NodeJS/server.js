@@ -41,6 +41,55 @@ var server = app.listen(config.web.port, config.web.host, function() {
   console.log('Webserver listening at http://%s:%s', config.web.host, config.web.port);
 });
 
+/*******************
+ ***  MQTT stuff ***
+ *******************/
+
+mqttServer.on('ready', function() {
+  console.log('MQTT Broker listening at %s on port %s', config.mqtt.host, config.mqtt.port);
+});
+
+
+mqttServer.on('published', function(packet, client) {
+  switch(packet.topic) {
+    case 'coop/temperature':
+      var Temperature = app.get('db').Temperature;
+      Temperature.create({ reading: parseFloat(packet.payload) });
+      primus.write({
+        update: {
+          temp: parseFloat(packet.payload)
+        }
+      });
+      break;
+    case 'coop/brightness':
+      var Brightness = app.get('db').Brightness;
+      Brightness.create({ reading: parseInt(packet.payload) });
+      primus.write({
+        update: {
+          light: parseInt(packet.payload)
+        }
+      });
+      break;
+    case 'coop/status':
+      var Status = app.get('db').Status;
+      var data = packet.payload.toString().split('|');
+      Status.upsert({ id: data[0], status: data[1] });
+      primus.write({
+        update: {
+          name: data[0],
+          status: data[1],
+          updated: parseInt(moment().format('X'))
+        }
+      });
+      break;
+  }
+});
+
+
+/*********************
+ ***  Socket stuff ***
+ *********************/
+
 var primus = new Primus(server, { transformer: 'socket.io' });
 
 primus.on('connection', function (spark) {
@@ -100,6 +149,7 @@ primus.on('connection', function (spark) {
     spark.write({ statuses: data });
   });
 
+  // Handle remote trigger events (handoff from socket to mqtt)
   spark.on('data', function(data) {
     if (typeof data.remoteTrigger != 'undefined') {
       var message = {
@@ -113,48 +163,3 @@ primus.on('connection', function (spark) {
     }
   })
 });
-
-/*******************
- ***  MQTT stuff ***
- *******************/
-
-  mqttServer.on('ready', function() {
-    console.log('MQTT Broker listening at %s on port %s', config.mqtt.host, config.mqtt.port);
-  });
-
-
-  mqttServer.on('published', function(packet, client) {
-    switch(packet.topic) {
-      case 'coop/temperature':
-        var Temperature = app.get('db').Temperature;
-        Temperature.create({ reading: parseFloat(packet.payload) });
-        primus.write({
-          update: {
-            temp: parseFloat(packet.payload)
-          }
-        });
-        break;
-      case 'coop/brightness':
-        var Brightness = app.get('db').Brightness;
-        Brightness.create({ reading: parseInt(packet.payload) });
-        primus.write({
-          update: {
-            light: parseInt(packet.payload)
-          }
-        });
-        break;
-      case 'coop/status':
-        var Status = app.get('db').Status;
-        var data = packet.payload.toString().split('|');
-        Status.upsert({ id: data[0], status: data[1] });
-        primus.write({
-          update: {
-            name: data[0],
-            status: data[1],
-            updated: parseInt(moment().format('X'))
-          }
-        });
-        break;
-    }
-  });
-
