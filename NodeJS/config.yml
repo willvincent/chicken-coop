@@ -15,10 +15,18 @@ web:
 mqtt:
   host: 127.0.0.1 # leave blank to accept connections on any available IP address
   port: 1883
-  stats: false
+  stats: true
+  id: broker
   publishNewClient: true
   maxInflightMessages: 1024
   backend:
     json: false
     wildcardOne: +
     wildcardSome: '#'
+beacon:
+  interval: 5 # Number of seconds to delay between time beacon messages sent
+timezone:
+  offset: 5 # Number of hours from GMT. (If timezone is GMT-5, this should be a positive 5, if GMT+2 this should be -2)
+admin:
+  username: admin
+  password: secret # Admin password for remote access on frontend.

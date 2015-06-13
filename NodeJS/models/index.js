@@ -26,11 +26,11 @@ console.log('Preparing database...');
 
 var models = [
   'Temperature',
-  'Brightness'
+  'Brightness',
+  'Status'
 ];
 
 models.forEach(function(model) {
-  console.log(' --> ' + model);
   module.exports[model] = db.import(__dirname + '/' + model);
   module.exports[model].sync(); // Ensure tables exist in db.
 });

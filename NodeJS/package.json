@@ -7,11 +7,14 @@
     "start": "node server.js"
   },
   "dependencies": {
-    "mosca": "0.30.x",
-    "primus": "3.0.x",
+    "body-parser": "^1.12.4",
     "express": "4.2.x",
-    "sequelize": "3.2.x",
+    "moment": "2.10.x",
+    "mosca": "0.30.x",
     "mysql": "2.7.x",
-    "read-yaml": "1.x.x"
+    "primus": "3.0.x",
+    "read-yaml": "1.x.x",
+    "sequelize": "3.2.x",
+    "socket.io": "0.9.x"
   }
 }

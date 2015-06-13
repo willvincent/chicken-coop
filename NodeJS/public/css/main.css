@@ -1,0 +1,27 @@
+.md-toolbar-tools h1 {
+  font-size: inherit;
+  font-weight: inherit;
+  margin: inherit;
+}
+
+md-progress-linear .md-container {
+  height: 1px;
+}
+
+md-progress-linear .md-bar {
+  height: 1px;
+}
+
+.width-120 {
+	width: 120px;
+}
+
+.list-item-progess {
+	position: relative;
+	left: 20;
+	top: -3;
+}
+
+[ng\:cloak], [ng-cloak], [data-ng-cloak], [x-ng-cloak], .ng-cloak, .x-ng-cloak {
+  display: none !important;
+}

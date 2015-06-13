@@ -1,23 +1,17 @@
-module.exports = function(app, express) {
-  var router = express.Router();
+var bodyParser = require('body-parser')
+ ,  yaml       = require('read-yaml');
 
+var config = yaml.sync('config.yml');
 
-  router.get('/temp', function (req, res) {
-    res.json({ message: "Hello from temp!" });
-  });
-
-  router.get('/light', function (req, res) {
-    res.json({ message: "Hello from light!" });
-  });
-
-  router.stack.forEach(function(item) { 
-    var methods = [];
-    Object.keys(item.route.methods).forEach(function(method) {
-      if (item.route.methods[method] == true) {
-        methods.push(method.toUpperCase());
-      }
-    });
-    console.log('  /api' + item.route.path + ' [' + methods.toString() + ']'); 
-  });
-  app.use('/api', router)
+var jsonParser = bodyParser.json();
+module.exports = function(app) {
+  app.post('/api/authenticate', jsonParser, function(req, res) {
+    if (req.body.password === config.admin.password && req.body.username === config.admin.username) {
+      res.send({success:true}, 200);
+    }
+    else {
+      res.send({success:false}, 403);
+    }
+    res.end();
+  })
 };
