@@ -101,17 +101,16 @@ primus.on('connection', function (spark) {
   });
 
   spark.on('data', function(data) {
-    if (typeof data.login != 'undefined') {
-      if (data.login.password === config.admin.password) {
-        spark.write({authenticated: true});
-        console.log(true);
-      }
-      else {
-        spark.write({authenticated: false}); 
-        console.log(false);
-      }
+    if (typeof data.remoteTrigger != 'undefined') {
+      var message = {
+        topic: 'coop/remotetrigger',
+        payload: data.remoteTrigger,
+        qos: 0,
+        retain: false
+      };
+
+      mqttServer.publish(message);
     }
-    console.log('Message from client: ', data);
   })
 });
 
