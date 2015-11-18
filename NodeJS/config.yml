@@ -23,6 +23,11 @@ mqtt:
     json: false
     wildcardOne: +
     wildcardSome: '#'
+statuses: # Default statuses to populate DB on first run of server. Items can be added or removed from this list as needed.
+  door: closed
+#  fan: off
+  light: off
+  water heater: off
 beacon:
   interval: 5 # Number of seconds to delay between time beacon messages sent
 timezone:
