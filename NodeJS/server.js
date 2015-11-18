@@ -4,6 +4,7 @@ var mosca      = require('mosca')
  ,  Primus     = require('primus')
  ,  app        = express()
  ,  moment     = require('moment')
+ ,  _          = require('lodash')
  ,  path       = require('path');
 
 var config = yaml.sync('config.yml');
@@ -22,7 +23,25 @@ var timeBeacon = function() {
 };
 setInterval(timeBeacon, (config.beacon.interval * 1000));
 
+// Load DB config
 app.set('db', require('./models'));
+
+// Ensure default statuses are present.
+// This will set default values if that table was missing, or not
+// fully populated when the server was started. Really only necessary on
+// first run of the server.
+var Status = app.get('db').Status;
+Status.findAll({
+  order: [ ['id', 'ASC'] ]
+}).then(function (statuses) {
+  for (var id in config.statuses) {
+    var index = _.findKey(statuses, {id: id});
+    if (typeof index === 'undefined') {
+      Status.upsert({ id: id, status: config.statuses[id] });
+    }
+  }
+})
+
 
 var mqttServer = mosca.Server(config.mqtt);
 app.express = express;
