@@ -37,7 +37,7 @@ Status.findAll({
   for (var id in config.statuses) {
     var index = _.findKey(statuses, {id: id});
     if (typeof index === 'undefined') {
-      Status.upsert({ id: id, status: config.statuses[id] });
+      Status.insert({ id: id, status: config.statuses[id] });
     }
   }
 })
