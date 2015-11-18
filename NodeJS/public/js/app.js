@@ -67,7 +67,6 @@ app.controller('AppCtrl', ['$scope', '$http', '$mdSidenav', '$window', '$filter'
       $scope.items = data.statuses;
     }
     if (typeof data.lightReadings != 'undefined') {
-      $scope.lightData = [];
       data.lightReadings.forEach(function(reading) {
         $scope.lightData.push([reading.createdAt, reading.reading]);
       });
@@ -76,7 +75,6 @@ app.controller('AppCtrl', ['$scope', '$http', '$mdSidenav', '$window', '$filter'
       }
     }
     if (typeof data.tempReadings != 'undefined') {
-      $scope.tempData = [];
       data.tempReadings.forEach(function(reading) {
         $scope.tempData.push([reading.createdAt, reading.reading]);
       });
@@ -228,10 +226,6 @@ $scope.lightChart = {
       data: $scope.lightData
     }]
   };
-
-  $scope.toggleItem = function(itemId) {
-    // TODO: Code to trigger appropriate event.
-  }
 
   $scope.itemType = function(status) {
     if (status == 'on' || status == 'off') {
