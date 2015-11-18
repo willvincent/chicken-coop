@@ -1,7 +1,8 @@
 var bodyParser = require('body-parser')
+ ,  path       = require('path')
  ,  yaml       = require('read-yaml');
 
-var config = yaml.sync('config.yml');
+var config = yaml.sync(path.resolve(__dirname, '../config.yml'));
 
 var jsonParser = bodyParser.json();
 module.exports = function(app) {

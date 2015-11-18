@@ -1,8 +1,9 @@
 var Sequelize = require('sequelize')
  ,  yaml      = require('read-yaml')
- ,  config    = yaml.sync(__dirname + '/../config.yml')
+ ,  path      = require('path')
+ ,  config    = yaml.sync(path.resolve(__dirname, '../config.yml'))
  ,  dbOptions = {};
-  
+
 if (config.db.dialect == "sqlite") {
   dbOptions = {
     host: config.db.host,

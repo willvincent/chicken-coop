@@ -7,7 +7,7 @@ var mosca      = require('mosca')
  ,  _          = require('lodash')
  ,  path       = require('path');
 
-var config = yaml.sync('config.yml');
+var config = yaml.sync(path.resolve(__dirname, 'config.yml'));
 var socket = null;
 
 // Sends time information every 'beaconInterval' seconds
