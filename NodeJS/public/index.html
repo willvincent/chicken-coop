@@ -55,7 +55,7 @@
                   <h4 class="md-title">Light Level</h4>
                 </md-card>
               </div>
-              <div layout="column" layout-gt-sm="row">
+              <div layout="row">
                 <md-content flex>
                   <md-card>
                     <md-list>
@@ -117,14 +117,14 @@
               <md-content class="md-padding" ng-switch-when="false">
                 <md-tabs md-dynamic-height md-border-bottom>
                   <md-tab label="Temperature">
-                    <div layout="column">
+                    <div layout="row">
                       <md-card flex>
                         <highchart id="chart1" config="tempChart"></highchart>
                       </md-card>
                     </div>
                   </md-tab>
                   <md-tab label="Light Level">
-                    <div layout="column">
+                    <div layout="row">
                       <md-card flex>
                         <highchart id="chart2" config="lightChart"></highchart>
                       </md-card>
