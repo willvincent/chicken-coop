@@ -31,16 +31,18 @@ app.set('db', require('./models'));
 // fully populated when the server was started. Really only necessary on
 // first run of the server.
 var Status = app.get('db').Status;
-Status.findAll({
-  order: [ ['id', 'ASC'] ]
-}).then(function (statuses) {
-  for (var id in config.statuses) {
-    var index = _.findKey(statuses, {id: id});
-    if (typeof index === 'undefined') {
-      Status.create({ id: id, status: config.statuses[id] });
+Status.sync().then(function () { // Ensure table exists before attempting findAll().
+  Status.findAll({
+    order: [ ['id', 'ASC'] ]
+  }).then(function (statuses) {
+    for (var id in config.statuses) {
+      var index = _.findKey(statuses, {id: id});
+      if (typeof index === 'undefined') {
+        Status.create({ id: id, status: config.statuses[id] });
+      }
     }
-  }
-})
+  });
+});
 
 
 var mqttServer = mosca.Server(config.mqtt);
