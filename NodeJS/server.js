@@ -14,7 +14,7 @@ var socket = null;
 var timeBeacon = function() {
   var message = {
     topic: 'time/beacon',
-    payload: moment().format('MMM DD YYYY|HH:mm:ss|x'),
+    payload: moment().format('X'),
     qos: 0,
     retain: false
   };
