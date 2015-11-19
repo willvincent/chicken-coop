@@ -266,10 +266,10 @@ float getTemp() {
 }
 
 void updateLCD() {
+  char tempStr[5];
   lcd.clear();
   lcd.setCursor(0,0);
-  lcd.print("T ");
-  lcd.print(tempF);
+  lcd.print(dtostrf(tempF, 5, 1, tempStr));
   lcd.print("F | L ");
   lcd.print(brightness);
   lcd.print("%");
