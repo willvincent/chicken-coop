@@ -33,9 +33,9 @@ const int rtcSDA        = 20; // Real Time Clock SDA (i2c arduino mega)
 const int rtcSCL        = 21;  // Real Time Clock SCL (i2c arduino mega)
 
 // LCD Pins
-const int lcd_4  = 24;  // LCD RS
-const int lcd_5  = 25;  // LCD R/W
-const int lcd_6  = 26;  // LCD Enable
+const int lcd_4  = 24; // LCD RS
+const int lcd_5  = 25; // LCD R/W
+const int lcd_6  = 26; // LCD Enable
 const int lcd_11 = 27; // LCD Data 4
 const int lcd_12 = 28; // LCD Data 5
 const int lcd_13 = 29; // LCD Data 6
@@ -67,6 +67,7 @@ const int chpdPin = 3;
 // Misc Settings
 const unsigned long millisPerDay    = 86400000; // Milliseconds per day
 const unsigned long debounceWait    =      100; // Debounce timer (100ms)
+const unsigned long ledBlinkRate    =      500; // Delay between LED blinks
 const unsigned long remoteOverride  =   600000; // Length of time to lockout readings. (10min)
 const unsigned long readingInterval =   300000; // How often to take sensor readings. (5min)
 const int           fanThreshold    =       78; // When temperature exceeds this threshold, turn on fan
@@ -77,6 +78,7 @@ const int           heaterThreshold =       36; // When temperature is below thi
 unsigned long lastReading  = 0;
 unsigned long lastDebounce = 0;
 unsigned long lastRTCSync  = 0;
+unsigned long lastLEDBlink = 0;
 String        doorState    = "closed"; // Values will be one of: closed, closing, open, opening
 boolean       heaterState  = false;
 boolean       lampState    = false;
@@ -93,6 +95,9 @@ ESP esp(&espPort, chpdPin);
 MQTT mqtt(&esp);
 boolean wifiConnected = false;
 
+/**
+ * Manage WIFI connection
+ */
 void wifiCb(void* response) {
   uint32_t status;
   RESPONSE res(response);
@@ -113,22 +118,55 @@ void wifiCb(void* response) {
   }
 }
 
+/**
+ * MQTT Connection event handler.
+ *
+ * Subscribes to desired channels
+ */
 void mqttConnected(void* response) {
   if (Debugging) {
     debugger.println("MQTT Connected");
   }
+  
+  // Subscribe to time beacon channel to keep RTC up to date.
   mqtt.subscribe(sTime);
+  
+  // Subscribe to remote trigger channel to allow remote control of chicken coop
   mqtt.subscribe(sRemote);
 }
 
+/**
+ * MQTT Disconnect event handler.
+ */
 void mqttDisconnected(void* response) {
   if (Debugging) {
     debugger.println("MQTT Disconnected");
   }
 }
 
-void mqttPublished(void* response) {}
+/**
+ * MQTT Publish even handler.
+ *
+ * We don't really need this, but it allows logging of any sent
+ * messages for debugging purposes.
+ */
+void mqttPublished(void* response) {
+  RESPONSE res(response);
+  String topic = res.popString();
+  String data  = res.popString();
+  if (Debugging) {
+    debugger.print("MQTT Data published to channel '");
+    debugger.print(topic);
+    debugger.print("': ");
+    debugger.println(data);
+  }
+}
 
+/**
+ * Handle incoming MQTT messages.
+ *
+ * This allows us to remotely trigger events via WIFI!
+ */
 void mqttData(void* response) {
   RESPONSE res(response);
   String topic = res.popString();
@@ -161,7 +199,7 @@ void mqttData(void* response) {
   
   // Sync RTC to time beacon once/day
   if (topic == "time/beacon") {
-    if ((millis() - millisPerDay) > lastRTCSync) {
+    if ((unsigned long)(millis() - millisPerDay) >= lastRTCSync) {
       rtc.adjust(atoi(data.c_str()));
       lastRTCSync = millis();
     }
@@ -265,17 +303,55 @@ float getTemp() {
   return TemperatureSum;
 }
 
+/**
+ * Write current temp, brightness level, and door status to LCD screen.
+ */
 void updateLCD() {
-  char tempStr[5];
+  char tempStr[4];
   lcd.clear();
   lcd.setCursor(0,0);
-  lcd.print(dtostrf(tempF, 5, 1, tempStr));
+  lcd.print(dtostrf(tempF, 4, 1, tempStr));
   lcd.print("F | L ");
   lcd.print(brightness);
   lcd.print("%");
   lcd.setCursor(0,1);
   lcd.print("Door: ");
   lcd.print(doorState);
+}
+
+/**
+ * Allow writing misc messages to the LCD screen.
+ */
+void lcdWrite(char *firstLine = "", char *secondLine = "") {
+  lcd.clear();
+  lcd.setCursor(0,0);
+  lcd.print(firstLine);
+  lcd.setCursor(0,1);
+  lcd.print(secondLine);
+}
+
+/**
+ * Handle door LEDs
+ */
+void doorLEDs() {
+  // When door is closed, closed LED should be lit
+  if (doorState == "closed") {
+    digitalWrite(doorClosedLED, HIGH);
+    digitalWrite(doorOpenLED, LOW);
+  }
+  // When door is open, open LED should be lit
+  else if (doorState == "open") {
+    digitalWrite(doorClosedLED, LOW);
+    digitalWrite(doorOpenLED, HIGH);
+  }
+  // If door is opening/closing (or stuck?) blink LEDs back and forth
+  else {
+    if ((unsigned long)(millis() - lastLEDBlink) >= ledBlinkRate) {
+      lastLEDBlink = millis();
+      digitalWrite(doorClosedLED, !digitalRead(doorClosedLED));
+      digitalWrite(doorOpenLED, !digitalRead(doorOpenLED));
+    }
+  }
 }
 
 /****************************/
@@ -304,7 +380,14 @@ void setup() {
     debugger.begin(115200);
     debugger.println("Initialising...");
   }
+  // Init LCD
+  pinMode(lcd_bl, OUTPUT);
+  digitalWrite(lcd_bl, HIGH);  
+  lcd.begin(16,2);
+  lcdWrite("Initializing...");
+  
   espPort.begin(115200);
+  lcdWrite("Initializing...", "WIFI Connecting");
   esp.enable();
   delay(500);
   esp.reset();
@@ -314,10 +397,12 @@ void setup() {
   if (Debugging) {
     debugger.println("ARDUINO: Setup MQTT client");
   }
+  lcdWrite("Initializing...", "MQTT Connecting");
   if (!mqtt.begin("coop_duino", "", "", 120, 1)) { // client_id, username, password, keepalive time, cleansession boolean
     if (Debugging) {
       debugger.println("ARDUINO: Failed to setup MQTT");
     }
+    lcdWrite("MQTT Connect", "Failure");
     while(1);
   }
   
@@ -332,6 +417,7 @@ void setup() {
   esp.wifiCb.attach(&wifiCb);
   esp.wifiConnect(wHost, wPass);
   
+  lcdWrite("System Ready");
   
   /**
    * Setup pin modes
@@ -347,7 +433,6 @@ void setup() {
   pinMode(doorBottom, INPUT);
   pinMode(fan, OUTPUT);
   pinMode(fanSpeed, OUTPUT);
-  pinMode(lcd_bl, OUTPUT);
   
   // Pin defaults
   digitalWrite(lampRelay, LOW);
@@ -361,9 +446,7 @@ void setup() {
   digitalWrite(doorBottom, HIGH); // Enable resistor
   digitalWrite(fan, LOW);
   digitalWrite(fanSpeed, LOW);
-  digitalWrite(lcd_bl, HIGH);
-  
-  lcd.begin(16,2);
+
 }
 
 
@@ -371,7 +454,7 @@ void setup() {
 void loop() {
   esp.process();
   
-  if ((millis() - readingInterval) > lastReading) {
+  if ((unsigned long)(millis() - readingInterval) >= lastReading) {
     // Do stuff!
     readSensors();
     updateLCD();
