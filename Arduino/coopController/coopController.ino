@@ -621,7 +621,7 @@ void debounceDoor() {
  */
 void setup() {
   if (Debugging) {
-    debugger.begin(115200);
+    debugger.begin(19200);
     debugger.println("Initialising...");
   }
   // Init LCD
@@ -630,7 +630,7 @@ void setup() {
   lcd.begin(16,2);
   lcdWrite("Initializing...");
 
-  espPort.begin(115200);
+  espPort.begin(19200);
   lcdWrite("Initializing...", "WIFI Connecting");
   esp.enable();
   delay(500);
