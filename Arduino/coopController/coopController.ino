@@ -464,7 +464,7 @@ void readSensors() {
 void handleSensorReadings() {
   // Temperature based reactions
   // ---------------------------
-  
+
   // Ensure fan is on if temperature is at or above fan threshold.
   if (TempF >= fanThreshold) {
     if (!fanState) {
@@ -483,7 +483,7 @@ void handleSensorReadings() {
       toggleFan();
     }
   }
-  
+
   // Ensure water heater is on if temperature is at or below heater threshold.
   if (TempF <= heaterThreshold) {
     if (!heaterState) {
@@ -502,7 +502,7 @@ void handleSensorReadings() {
       toggleHeater();
     }
   }
-  
+
   // Light based reactions
   // ---------------------
 
@@ -570,7 +570,6 @@ void handleSensorReadings() {
   }
 }
 
-
 /**
  * Door switch debouncer
  */
@@ -614,7 +613,6 @@ void debounceDoor() {
     lastDebounce = millis();
   }
 }
-
 
 /**
  * Initialization on startup.
@@ -712,7 +710,7 @@ void loop() {
 
   // Update door LEDs as needed
   doorLEDs();
-  
+
   // Update the LCD display
   updateLCD();
 }
