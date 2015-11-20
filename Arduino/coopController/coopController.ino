@@ -94,9 +94,11 @@ int           brightness      = 0;
 int           doorTopVal      = 0;
 int           doorTopVal2     = 0;
 int           doorTopState    = 0;
+int           doorTopPrev     = 0;
 int           doorBottomVal   = 0;
 int           doorBottomVal2  = 0;
 int           doorBottomState = 0;
+int           doorBottomPrev  = 0;
 
 RTC_DS1307 rtc;
 OneWire ds(tempSense);
@@ -466,7 +468,7 @@ void handleSensorReadings() {
   // ---------------------------
 
   // Ensure fan is on if temperature is at or above fan threshold.
-  if (TempF >= fanThreshold) {
+  if (tempF >= fanThreshold) {
     if (!fanState) {
       if (Debugging) {
         debugger.println("Turning on fan.");
@@ -485,7 +487,7 @@ void handleSensorReadings() {
   }
 
   // Ensure water heater is on if temperature is at or below heater threshold.
-  if (TempF <= heaterThreshold) {
+  if (tempF <= heaterThreshold) {
     if (!heaterState) {
       if (Debugging) {
         debugger.println("Turning on water heater.");
