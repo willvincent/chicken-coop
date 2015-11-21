@@ -89,6 +89,7 @@ unsigned long lastRTCSync        = 0;
 unsigned long lastLEDBlink       = 0;
 unsigned long remoteLockStart    = 0;
 String        doorState          = "open"; // Values will be one of: closed, closing, open, opening
+String        doorStatePrev      = "";
 boolean       heaterState        = false;
 boolean       lampState          = false;
 boolean       fanState           = false;
@@ -108,7 +109,10 @@ RTC_DS1307 RTC;
 OneWire ds(tempSense);
 LiquidCrystal lcd(lcd_4, lcd_5, lcd_6, lcd_11, lcd_12, lcd_13, lcd_14);
 
-ESP esp(&espPort, &debugger, chpdPin);
+ESP esp(&espPort, chpdPin);
+// Replace previous line with following line to enable ESP debug output.
+// ESP esp(&espPort, &debugger, chpdPin);
+
 MQTT mqtt(&esp);
 boolean wifiConnected = false;
 
@@ -442,6 +446,8 @@ void doorLEDs() {
  */
  void doorMove() {
    debounceDoor();
+   doorStatePrev = doorState;
+
    if (doorState == "closed" || doorState == "closing") {
      if (doorBottomState != 0) {
        // Door isn't closed, run motor until it is.
@@ -454,6 +460,10 @@ void doorLEDs() {
        digitalWrite(doorClose, LOW);
        digitalWrite(doorOpen, LOW);
        digitalWrite(doorSpeed, LOW);
+       doorState = "closed";
+       if (doorStatePrev != doorState && wifiConnected) {
+         mqtt.publish("coop/status", "door|closed", 2, 0);
+       }
      }
    }
    else {
@@ -468,6 +478,10 @@ void doorLEDs() {
        digitalWrite(doorClose, LOW);
        digitalWrite(doorOpen, LOW);
        digitalWrite(doorSpeed, LOW);
+       doorState = "open";
+       if (doorStatePrev != doorState && wifiConnected) {
+         mqtt.publish("coop/status", "door|open", 2, 0);
+       }
      }
    }
  }
@@ -746,25 +760,26 @@ void setup() {
  */
 void loop() {
   esp.process();
-
+  // 5 second pause on initial startup to let devices settle, wifi connect, etc.
+  if (millis() > 5000) {
     // Only fetch new sensor data if it's been long enough since the last reading.
     if (lastReading == 0 ||
         ((unsigned long)(millis() - remoteLockStart) > remoteOverride &&
         (unsigned long)(millis() - lastReading) > readingInterval)) {
       // Read new data from sensors
       readSensors();
-  
+
       // Respond ot sensor data
       handleSensorReadings();
     }
-  
+
     // Move the door as needed
     doorMove();
-  
+
     // Update door LEDs as needed
     doorLEDs();
-  
+
     // Update the LCD display
     updateLCD();
-
+  }
 }
