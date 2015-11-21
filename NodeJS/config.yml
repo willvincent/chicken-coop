@@ -19,6 +19,10 @@ mqtt:
   id: broker
   publishNewClient: true
   maxInflightMessages: 1024
+  client:
+    id: coop-duino
+    user: chicken_coop
+    pass: secret
   backend:
     json: false
     wildcardOne: +

@@ -68,9 +68,31 @@ var server = app.listen(config.web.port, config.web.host, function() {
  *******************/
 
 mqttServer.on('ready', function() {
+  mqttServer.authenticate = function(client, username, password, callback) {
+    var authorized = (client.id === config.mqtt.client.id && username === config.mqtt.client.user && password.toString() === config.mqtt.client.pass);
+    if (authorized) {
+      client.user = username;
+    }
+    callback(null, authorized);
+  };
   console.log('MQTT Broker listening at %s on port %s', config.mqtt.host, config.mqtt.port);
 });
 
+mqttServer.on('clientConnected', function(client) {
+  if (client.id == config.mqtt.client.id) {
+    primus.write({
+      clientStatus: 'Online'
+    });
+  }
+});
+
+mqttServer.on('clientDisconnected', function(client) {
+  if (client.id == config.mqtt.client.id) {
+    primus.write({
+      clientStatus: 'Offline'
+    });
+  }
+});
 
 mqttServer.on('published', function(packet, client) {
   switch(packet.topic) {

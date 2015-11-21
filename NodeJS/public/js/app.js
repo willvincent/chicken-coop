@@ -11,6 +11,7 @@ app.controller('AppCtrl', ['$scope', '$http', '$mdSidenav', '$window', '$filter'
   $scope.tempData = [];
   $scope.lightData = [];
   $scope.windowWidth = $window.innerWidth;
+  $scope.clientStatus = "Offline";
   $scope.username = null;
   $scope.password = null;
 
@@ -65,6 +66,9 @@ app.controller('AppCtrl', ['$scope', '$http', '$mdSidenav', '$window', '$filter'
   $scope.primus.on('data', function message(data) {
     if (typeof data.statuses != 'undefined') {
       $scope.items = data.statuses;
+    }
+    if (typeof data.clientStatus != 'undefined') {
+      $scope.clientStatus = data.clientStatus;
     }
     if (typeof data.lightReadings != 'undefined') {
       data.lightReadings.forEach(function(reading) {
