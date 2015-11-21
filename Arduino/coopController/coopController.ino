@@ -762,6 +762,13 @@ void loop() {
   esp.process();
   // 5 second pause on initial startup to let devices settle, wifi connect, etc.
   if (millis() > 5000) {
+    if (lastReading == 0) {
+      // Send default values at initial startup to ensure 
+      // states are in sync at other end of MQTT connection.
+      mqtt.publish("coop/status", "fan|off", 2, 0);
+      mqtt.publish("coop/status", "light|off", 2, 0);
+      mqtt.publish("coop/status", "heater|off", 2, 0);
+    }
     // Only fetch new sensor data if it's been long enough since the last reading.
     if (lastReading == 0 ||
         ((unsigned long)(millis() - remoteLockStart) > remoteOverride &&
