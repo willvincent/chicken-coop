@@ -145,7 +145,8 @@ primus.on('connection', function (spark) {
         $gt: moment().subtract(24, 'hours').format('YYYY-MM-DD HH:mm:ss')
       }
     },
-    order: [ ['createdAt', 'ASC'] ]
+    order: [ ['createdAt', 'ASC'] ],
+    limit: 360
   }).then(function(results) {
     var data = [];
     results.forEach(function(result) {
@@ -165,7 +166,8 @@ primus.on('connection', function (spark) {
         $gt: moment().subtract(24, 'hours').format('YYYY-MM-DD HH:mm:ss')
       }
     },
-    order: [ ['createdAt', 'ASC'] ]
+    order: [ ['createdAt', 'ASC'] ],
+    limit: 360
   }).then(function(results) {
     var data = [];
     results.forEach(function(result) {

@@ -101,14 +101,14 @@ app.controller('AppCtrl', ['$scope', '$http', '$mdSidenav', '$window', '$filter'
       if (typeof data.update.light != 'undefined') {
         $scope.currentLight = data.update.light;
         $scope.lightData.push([parseInt(moment().format('x')), data.update.light]);
-        if ($scope.lightData.length > 1440) {
+        if ($scope.lightData.length > 360) {
           $scope.lightData.shift();
         }
       }
       if (typeof data.update.temp != 'undefined') {
         $scope.currentTemp = data.update.temp;
         $scope.tempData.push([parseInt(moment().format('x')), data.update.temp]);
-        if ($scope.tempData.length > 1440) {
+        if ($scope.tempData.length > 360) {
           $scope.tempData.shift();
         }
       }
