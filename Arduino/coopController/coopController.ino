@@ -767,7 +767,7 @@ void loop() {
       // states are in sync at other end of MQTT connection.
       mqtt.publish("coop/status", "fan|off", 2, 0);
       mqtt.publish("coop/status", "light|off", 2, 0);
-      mqtt.publish("coop/status", "heater|off", 2, 0);
+      mqtt.publish("coop/status", "water heater|off", 2, 0);
     }
     // Only fetch new sensor data if it's been long enough since the last reading.
     if (lastReading == 0 ||
