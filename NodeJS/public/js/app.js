@@ -63,6 +63,17 @@ app.controller('AppCtrl', ['$scope', '$http', '$mdSidenav', '$window', '$filter'
     });
   }
 
+  $scope.calcAvg = function(data) {
+    if (data.length > 0) {
+      var sum = 0;
+      for (var i = 0; i < data.length; i++) {
+        sum += parseInt(data[i][1], 10);
+      }
+      return $filter('number')(sum/data.length, 1);
+    }
+    return "---";
+  }
+
   $scope.primus.on('data', function message(data) {
     if (typeof data.statuses != 'undefined') {
       $scope.items = data.statuses;
@@ -90,14 +101,14 @@ app.controller('AppCtrl', ['$scope', '$http', '$mdSidenav', '$window', '$filter'
       if (typeof data.update.light != 'undefined') {
         $scope.currentLight = data.update.light;
         $scope.lightData.push([parseInt(moment().format('x')), data.update.light]);
-        if ($scope.lightData.length > 300) {
+        if ($scope.lightData.length > 1440) {
           $scope.lightData.shift();
         }
       }
       if (typeof data.update.temp != 'undefined') {
         $scope.currentTemp = data.update.temp;
         $scope.tempData.push([parseInt(moment().format('x')), data.update.temp]);
-        if ($scope.tempData.length > 300) {
+        if ($scope.tempData.length > 1440) {
           $scope.tempData.shift();
         }
       }
