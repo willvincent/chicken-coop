@@ -54,6 +54,9 @@ const int chpdPin = 3;
 // MQTT Host Settings
 #define mHost "domain.com"
 #define mPort 1883
+#define mClientID "coop-duino"
+#define mUsername "chicken_coop"
+#define mPassword "secret"
 
 // MQTT Subscription Channels
 #define sTime "time/beacon"
@@ -67,9 +70,9 @@ const int chpdPin = 3;
 // Misc Settings
 const unsigned long millisPerDay    = 86400000; // Milliseconds per day
 const unsigned long debounceWait    =       25; // Debounce timer (25 ms)
-const unsigned long ledBlinkRate    =      500; // Delay between LED blinks (1/2 sec)
+const unsigned long ledBlinkRate    =      250; // Delay between LED blinks (1/4 sec)
 const unsigned long remoteOverride  =   600000; // Length of time to lockout readings. (10 min)
-const unsigned long readingInterval =   300000; // How often to take sensor readings. (5 min)
+const unsigned long readingInterval =    60000; // How often to take sensor readings. (1 min)
 const int           fanThreshold    =       78; // When temperature (Farenheit) exceeds this threshold, turn on fan
 const int           heaterThreshold =       36; // When temperature (Farenheit) is below this threshold, turn on water heater
 
@@ -80,31 +83,32 @@ const int           nightLockStart =       22; // Hour (in 24hr time) to initiat
 const int           nightLockEnd   =        4; // Hour (in 24hr time) to end night time lockout (4am)
 
 // Runtime variables
-unsigned long lastReading     = 0;
-unsigned long lastDebounce    = 0;
-unsigned long lastRTCSync     = 0;
-unsigned long lastLEDBlink    = 0;
-String        doorState       = "closed"; // Values will be one of: closed, closing, open, opening
-boolean       heaterState     = false;
-boolean       lampState       = false;
-boolean       fanState        = false;
-float         tempC           = 0;
-float         tempF           = 0;
-int           brightness      = 0;
-int           doorTopVal      = 0;
-int           doorTopVal2     = 0;
-int           doorTopState    = 0;
-int           doorTopPrev     = 0;
-int           doorBottomVal   = 0;
-int           doorBottomVal2  = 0;
-int           doorBottomState = 0;
-int           doorBottomPrev  = 0;
+unsigned long lastReading        = 0;
+unsigned long lastDebounce       = 0;
+unsigned long lastRTCSync        = 0;
+unsigned long lastLEDBlink       = 0;
+unsigned long remoteLockStart    = 0;
+String        doorState          = "open"; // Values will be one of: closed, closing, open, opening
+boolean       heaterState        = false;
+boolean       lampState          = false;
+boolean       fanState           = false;
+float         tempC              = 0;
+float         tempF              = 0;
+int           brightness         = 0;
+int           doorTopVal         = 0;
+int           doorTopVal2        = 0;
+int           doorTopState       = 0;
+int           doorTopPrev        = 0;
+int           doorBottomVal      = 0;
+int           doorBottomVal2     = 0;
+int           doorBottomState    = 0;
+int           doorBottomPrev     = 0;
 
-RTC_DS1307 rtc;
+RTC_DS1307 RTC;
 OneWire ds(tempSense);
 LiquidCrystal lcd(lcd_4, lcd_5, lcd_6, lcd_11, lcd_12, lcd_13, lcd_14);
 
-ESP esp(&espPort, chpdPin);
+ESP esp(&espPort, &debugger, chpdPin);
 MQTT mqtt(&esp);
 boolean wifiConnected = false;
 
@@ -142,10 +146,10 @@ void mqttConnected(void* response) {
   }
 
   // Subscribe to time beacon channel to keep RTC up to date.
-  mqtt.subscribe(sTime);
+  mqtt.subscribe(sTime, 0);
 
   // Subscribe to remote trigger channel to allow remote control of chicken coop
-  mqtt.subscribe(sRemote);
+  mqtt.subscribe(sRemote, 2);
 }
 
 /**
@@ -168,10 +172,12 @@ void mqttPublished(void* response) {
   String topic = res.popString();
   String data  = res.popString();
   if (Debugging) {
-    debugger.print("MQTT Data published to channel '");
-    debugger.print(topic);
-    debugger.print("': ");
-    debugger.println(data);
+    if (topic != "time/beacon") {
+      debugger.print("MQTT Data published to channel '");
+      debugger.print(topic);
+      debugger.print("': ");
+      debugger.println(data);
+    }
   }
 }
 
@@ -191,45 +197,59 @@ void mqttData(void* response) {
     debugger.println(data);
   }
 
-  if (topic == "coop/remotetrigger") {
+  if (topic == sRemote) {
     // If door movement is triggered, toggle door state to
     // opening or closing based on current state.
     // If door is currently moving, the trigger is ignored.
     if (data == "door") {
       if (doorState == "open") {
         doorState = "closing";
-        lastReading = millis() + remoteOverride;
+        remoteLockStart = millis();
       }
       else if (doorState == "closed") {
         doorState = "opening";
-        lastReading = millis() + remoteOverride;
+        remoteLockStart = millis();
       }
     }
 
     // Toggle interior light
     if (data == "light") {
       toggleLamp();
-      lastReading = millis() + remoteOverride;
+      remoteLockStart = millis();
     }
 
     // Toggle water heater
     if (data == "water heater") {
       toggleHeater();
-      lastReading = millis() + remoteOverride;
+      remoteLockStart = millis();
     }
 
     // Toggle fan
     if (data == "fan") {
       toggleFan();
-      lastReading = millis() + remoteOverride;
+      remoteLockStart = millis();
     }
   }
 
   // Sync RTC to time beacon once/day
   if (topic == "time/beacon") {
-    if ((unsigned long)(millis() - millisPerDay) >= lastRTCSync) {
-      rtc.adjust(atoi(data.c_str()));
+    if (lastRTCSync == 0 || ((unsigned long)(millis() - lastRTCSync) > millisPerDay)) {
+      RTC.adjust(strtoul(data.c_str(), NULL, 0));
       lastRTCSync = millis();
+      if (Debugging) {
+        DateTime now = RTC.now();
+        debugger.println("RTC Updated:");
+        debugger.print(now.month(), DEC);
+        debugger.print("/");
+        debugger.print(now.day(), DEC);
+        debugger.print("/");
+        debugger.println(now.year(), DEC);
+        debugger.print(now.hour(), DEC);
+        debugger.print(":");
+        debugger.print(now.minute(), DEC);
+        debugger.print(":");
+        debugger.println(now.second(), DEC);
+      }
     }
   }
 }
@@ -243,14 +263,18 @@ void toggleLamp() {
     if (Debugging) {
       debugger.println("Interior light off.");
     }
-    mqtt.publish(pStatus, "light|off");
+    if (wifiConnected) {
+      mqtt.publish(pStatus, "light|off", 2, 0);
+    }
   }
   else {
     digitalWrite(lampRelay, HIGH);
     if (Debugging) {
       debugger.println("Interior light on.");
     }
-    mqtt.publish(pStatus, "light|on");
+    if (wifiConnected) {
+      mqtt.publish(pStatus, "light|on", 2, 0);
+    }
   }
   lampState = !lampState;
 }
@@ -264,14 +288,18 @@ void toggleHeater() {
     if (Debugging) {
       debugger.println("Water heater off.");
     }
-    mqtt.publish(pStatus, "water heater|off");
+    if (wifiConnected) {
+      mqtt.publish(pStatus, "water heater|off", 2, 0);
+    }
   }
   else {
     digitalWrite(heaterRelay, HIGH);
     if (Debugging) {
       debugger.println("Water heater on.");
     }
-    mqtt.publish(pStatus, "water heater|on");
+    if (wifiConnected) {
+      mqtt.publish(pStatus, "water heater|on", 2, 0);
+    }
   }
   heaterState = !heaterState;
 }
@@ -286,7 +314,9 @@ void toggleFan() {
     if (Debugging) {
       debugger.println("Fan off.");
     }
-    mqtt.publish(pStatus, "fan|off");
+    if (wifiConnected) {
+      mqtt.publish(pStatus, "fan|off", 2, 0);
+    }
   }
   else {
     digitalWrite(fan, HIGH);
@@ -294,7 +324,9 @@ void toggleFan() {
     if (Debugging) {
       debugger.println("Fan on.");
     }
-    mqtt.publish(pStatus, "fan|on");
+    if (wifiConnected) {
+      mqtt.publish(pStatus, "fan|on", 2, 0);
+    }
   }
   fanState = !fanState;
 }
@@ -397,10 +429,10 @@ void doorLEDs() {
   }
   // If door is opening/closing (or stuck?) blink LEDs back and forth
   else {
-    if ((unsigned long)(millis() - lastLEDBlink) >= ledBlinkRate) {
-      lastLEDBlink = millis();
+    if ((unsigned long)(millis() - lastLEDBlink) > ledBlinkRate) {
       digitalWrite(doorClosedLED, !digitalRead(doorClosedLED));
       digitalWrite(doorOpenLED, !digitalRead(doorOpenLED));
+      lastLEDBlink = millis();
     }
   }
 }
@@ -448,15 +480,18 @@ void readSensors() {
   tempC = getTemp();
   tempF = ((tempC * 9.0) / 5.0) + 32;
   char tempStr[5];
-  mqtt.publish(pTemp, dtostrf(tempF, 5, 1, tempStr));
+  if (wifiConnected) {
+    mqtt.publish(pTemp, dtostrf(tempF, 5, 1, tempStr), 2, 0);
+  }
 
   // Read light sensor and convert to brightness percentage
-  brightness = analogRead(tempSense);
-  brightness = map(brightness, 746, 13, 0, 100);  // Remap value to a 0-100 scale
+  brightness = analogRead(lightSense);
+  brightness = map(brightness, 300, 150, 0, 100);  // Remap value to a 0-100 scale
   brightness = constrain(brightness, 0, 100);     // constrain value to 0-100 scale
   char briStr[3];
-  mqtt.publish(pLight, dtostrf(brightness, 3, 0, briStr));
-
+  if (wifiConnected) {
+    mqtt.publish(pLight, dtostrf(brightness, 3, 0, briStr), 2, 0);
+  }
   lastReading = millis();
 }
 
@@ -509,7 +544,7 @@ void handleSensorReadings() {
   // ---------------------
 
   // Fetch current time from RTC
-  DateTime now = rtc.now();
+  DateTime now = RTC.now();
   // If nightlock is enabled, and we are within the designated time period, simply
   // ensure interior light is off and door is closed.
   if (nightLock && (now.hour() > nightLockStart || now.hour() < nightLockEnd)) {
@@ -526,7 +561,9 @@ void handleSensorReadings() {
         debugger.println("NIGHTLOCK ENABLED: Closing door.");
       }
       doorState = "closing";
-      mqtt.publish(pStatus, "door|closing");
+      if (wifiConnected) {
+        mqtt.publish(pStatus, "door|closing", 2, 0);
+      }
     }
   }
   // Otherwise, handle brightness level based reactions
@@ -556,7 +593,9 @@ void handleSensorReadings() {
           debugger.println("Opening door.");
         }
         doorState = "opening";
-        mqtt.publish(pStatus, "door|opening");
+        if (wifiConnected) {
+          mqtt.publish(pStatus, "door|opening", 2, 0);
+        }
       }
     }
     // Otherwise, close door when light level falls to 15% or below.
@@ -566,7 +605,9 @@ void handleSensorReadings() {
           debugger.println("Closing door.");
         }
         doorState = "closing";
-        mqtt.publish(pStatus, "door|closing");
+        if (wifiConnected) {
+          mqtt.publish(pStatus, "door|closing", 2, 0);
+        }
       }
     }
   }
@@ -593,7 +634,9 @@ void debounceDoor() {
             if (Debugging) {
               debugger.println("Door open.");
             }
-            mqtt.publish(pStatus, "door|open");
+            if (wifiConnected) {
+              mqtt.publish(pStatus, "door|open", 2, 0);
+            }
           }
         }
       }
@@ -607,7 +650,9 @@ void debounceDoor() {
             if (Debugging) {
               debugger.println("Door closed.");
             }
-            mqtt.publish(pStatus, "door|closed");
+            if (wifiConnected) {
+              mqtt.publish(pStatus, "door|closed", 2, 0);
+            }
           }
         }
       }
@@ -620,35 +665,37 @@ void debounceDoor() {
  * Initialization on startup.
  */
 void setup() {
+  debugger.begin(19200);
   if (Debugging) {
-    debugger.begin(19200);
     debugger.println("Initialising...");
   }
   // Init LCD
   pinMode(lcd_bl, OUTPUT);
   digitalWrite(lcd_bl, HIGH);
+  RTC.begin();
   lcd.begin(16,2);
   lcdWrite("Initializing...");
 
   espPort.begin(19200);
-  lcdWrite("Initializing...", "WIFI Connecting");
+  lcdWrite("Initializing...", "WIFI Config");
   esp.enable();
   delay(500);
   esp.reset();
   delay(500);
   while(!esp.ready());
-
+  
   if (Debugging) {
     debugger.println("ARDUINO: Setup MQTT client");
   }
-  lcdWrite("Initializing...", "MQTT Connecting");
-  if (!mqtt.begin("coop_duino", "", "", 20, 1)) { // client_id, username, password, keepalive time, cleansession boolean
+  lcdWrite("Initializing...", "MQTT Config");
+  if (!mqtt.begin(mClientID, mUsername, mPassword, 20, 1)) { // client_id, username, password, keepalive time, cleansession boolean
     if (Debugging) {
       debugger.println("ARDUINO: Failed to setup MQTT");
     }
     lcdWrite("MQTT Connect", "Failure");
     while(1);
   }
+  mqtt.lwt("/lwt", "Offline");
 
   mqtt.connectedCb.attach(&mqttConnected);
   mqtt.disconnectedCb.attach(&mqttDisconnected);
@@ -661,7 +708,7 @@ void setup() {
   esp.wifiCb.attach(&wifiCb);
   esp.wifiConnect(wHost, wPass);
 
-  lcdWrite("System Ready");
+  lcdWrite("Initializing...", "WIFI Connecting");
 
   /**
    * Setup pin modes
@@ -690,6 +737,8 @@ void setup() {
   digitalWrite(doorBottom, HIGH); // Enable resistor
   digitalWrite(fan, LOW);
   digitalWrite(fanSpeed, LOW);
+
+  lcdWrite("System Ready");
 }
 
 /**
@@ -698,21 +747,24 @@ void setup() {
 void loop() {
   esp.process();
 
-  // Only fetch new sensor data if it's been long enough since the last reading.
-  if ((unsigned long)(millis() - readingInterval) >= lastReading) {
-    // Read new data from sensors
-    readSensors();
+    // Only fetch new sensor data if it's been long enough since the last reading.
+    if (lastReading == 0 ||
+        ((unsigned long)(millis() - remoteLockStart) > remoteOverride &&
+        (unsigned long)(millis() - lastReading) > readingInterval)) {
+      // Read new data from sensors
+      readSensors();
+  
+      // Respond ot sensor data
+      handleSensorReadings();
+    }
+  
+    // Move the door as needed
+    doorMove();
+  
+    // Update door LEDs as needed
+    doorLEDs();
+  
+    // Update the LCD display
+    updateLCD();
 
-    // Respond ot sensor data
-    handleSensorReadings();
-  }
-
-  // Move the door as needed
-  doorMove();
-
-  // Update door LEDs as needed
-  doorLEDs();
-
-  // Update the LCD display
-  updateLCD();
 }
