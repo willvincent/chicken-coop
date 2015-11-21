@@ -9,12 +9,13 @@ var mosca      = require('mosca')
 
 var config = yaml.sync(path.resolve(__dirname, 'config.yml'));
 var socket = null;
+var tzOffset = (new Date().getTimezoneOffset() * 60) * -1;
 
 // Sends time information every 'beaconInterval' seconds
 var timeBeacon = function() {
   var message = {
     topic: 'time/beacon',
-    payload: moment().format('X'),
+    payload: (parseInt(moment().format('X')) + tzOffset).toString(),
     qos: 0,
     retain: false
   };
@@ -176,7 +177,7 @@ primus.on('connection', function (spark) {
       var message = {
         topic: 'coop/remotetrigger',
         payload: data.remoteTrigger,
-        qos: 0,
+        qos: 2,
         retain: false
       };
 
