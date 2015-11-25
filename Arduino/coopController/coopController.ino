@@ -263,17 +263,31 @@ void mqttData(void* response) {
       lastRTCSync = millis();
       if (Debugging) {
         DateTime now = RTC.now();
+        char dateStr[10];
+        char timeStr[8];
+        sprintf(dateStr, "%02d/%02d/%04d", now.month(), now.day(), now.year());
+        int hr = now.hour();
+        boolean ampm = false;
+        if (hr > 12) {
+          hr = hr - 12;
+          ampm = true;
+        }
+        else if (hr == 12) {
+          ampm = true;
+        }
+        else if (hr == 0) {
+          hr = 12;
+        }
+        sprintf(timeStr, "%02d:%02d:%02d", hr, now.minute(), now.second());
         debugger.println("RTC Updated:");
-        debugger.print(now.month(), DEC);
-        debugger.print("/");
-        debugger.print(now.day(), DEC);
-        debugger.print("/");
-        debugger.println(now.year(), DEC);
-        debugger.print(now.hour(), DEC);
-        debugger.print(":");
-        debugger.print(now.minute(), DEC);
-        debugger.print(":");
-        debugger.println(now.second(), DEC);
+        debugger.println(dateStr);
+        debugger.print(timeStr);
+        if (ampm) {
+          debugger.println("pm");
+        }
+        else {
+          debugger.println("am");
+        }
       }
     } 
   }
