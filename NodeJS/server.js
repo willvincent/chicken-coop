@@ -66,8 +66,16 @@ if (config.sun.wunderground.enable) {
           var data = JSON.parse(str);
 
           if (typeof data.sun_phase !== 'undefined') {
-            sunRise = parseInt(data.sun_phase.sunrise.hour) + 1;
-            sunSet  = parseInt(data.sun_phase.sunset.hour) - 1;
+            sunRise = parseInt(data.sun_phase.sunrise.hour);
+            sunSet  = parseInt(data.sun_phase.sunset.hour);
+
+            if (parseInt(data.sun_phase.sunrise.minute) < 30) {
+              sunRise--;
+            }
+
+            if (parseInt(data.sun_phase.sunset.minute) < 30) {
+              sunSet--;
+            }
           }
           var msgA = {
             topic: 'sun/rise',
