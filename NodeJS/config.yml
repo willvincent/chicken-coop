@@ -32,6 +32,15 @@ statuses: # Default statuses to populate DB on first run of server. Items can be
 #  fan: off
   light: off
   water heater: off
+sun: # Configuration for night lock
+  default: # default values to use if webservice cannot be reached/not enabled
+    rise: 4 # 4am
+    set: 22 # 10pm
+  wunderground:
+    enabled: false # toggle use of weather underground webservice on/off
+    key: YOUR_KEY # webservice key from weather underground
+    state: YOUR_STATE # Used for webservice call
+    city: YOUR_CITY # Used for webservice call
 beacon:
   interval: 30 # Number of seconds to delay between time beacon messages sent
 admin:

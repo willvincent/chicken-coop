@@ -45,6 +45,55 @@ Status.sync().then(function () { // Ensure table exists before attempting findAl
   });
 });
 
+// Configure sunrise/set data
+var sunRise = config.sun.default.rise;
+var sunSet  = config.sun.default.Set;
+if (config.sun.wunderground.enable) {
+  var sunStatus = function() {
+    var http = require('http');
+    var options = {
+      host: 'api.wunderground.com',
+      path: '/api/' + config.sun.wunderground.key + '/astronomy/q/' + config.sun.wunderground.state + '/' + config.sun.wunderground.city + '.json'
+    };
+
+    var wuCb = function (res) {
+      if (res.statusCode == 200) {
+        var str = '';
+        res.on('data', function (chunk) {
+          str += chunk;
+        });
+        res.on('end', function() {
+          var data = JSON.parse(str);
+
+          if (typeof data.sun_phase !== 'undefined') {
+            sunRise = parseInt(data.sun_phase.sunrise.hour) + 1;
+            sunSet  = parseInt(data.sun_phase.sunset.hour) - 1;
+          }
+          var msgA = {
+            topic: 'sun/rise',
+            payload: sunRise.toString(),
+            qos: 2,
+            retain: false
+          };
+
+          var msgB = {
+            topic: 'sun/set',
+            payload: sunSet.toString(),
+            qos: 2,
+            retain: false
+          };
+
+          mqttServer.publish(msgA);
+          mqttServer.publish(msgB);
+        });
+      }
+    };
+
+    var req = http.request(options);
+    req.end();
+  };
+  setInterval(sunStatus, 43200000); // Every 12hrs
+}
 
 var mqttServer = mosca.Server(config.mqtt);
 app.express = express;
@@ -84,6 +133,8 @@ mqttServer.on('clientConnected', function(client) {
       clientStatus: 'Online'
     });
   }
+  mqttServer.publish({topic: 'sun/rise', payload: sunRise.toString(), qos: 2, retain: false});
+  mqttServer.publish({topic: 'sun/set', payload: sunSet.toString(), qos: 2, retain: false});
 });
 
 mqttServer.on('clientDisconnected', function(client) {
