@@ -10,7 +10,6 @@ var mosca      = require('mosca')
 var config = yaml.sync(path.resolve(__dirname, 'config.yml'));
 var socket = null;
 var tzOffset = (new Date().getTimezoneOffset() * 60) * -1;
-var lastBoot = 0;
 
 // Sends time information every 'beaconInterval' seconds
 var timeBeacon = function() {
@@ -127,12 +126,6 @@ mqttServer.on('published', function(packet, client) {
         }
       });
       break;
-    case 'coop/boot':
-      lastBoot = parseInt(packet.payload) - tzOffset;
-      primus.write({
-        bootTime: lastBoot
-      });
-      break;
   }
 });
 
@@ -144,9 +137,6 @@ mqttServer.on('published', function(packet, client) {
 var primus = new Primus(server, { transformer: 'socket.io' });
 
 primus.on('connection', function (spark) {
-  // Send last boot data
-  spark.write({ bootTime: lastBoot });
-
   // Hydrate brightness data
   var Brightness = app.get('db').Brightness;
   Brightness.findAll({
