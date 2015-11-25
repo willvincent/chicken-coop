@@ -60,6 +60,7 @@
               </div>
               <div layout="row">
                 <md-content flex>
+                  <div ng-if="bootTime">Last Reboot: <span am-preprocess="unix" am-time-ago="bootTime"></span></div>
                   <md-card>
                     <md-list>
                       <span ng-repeat="item in items">

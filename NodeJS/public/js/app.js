@@ -8,6 +8,7 @@ app.controller('AppCtrl', ['$scope', '$http', '$mdSidenav', '$window', '$filter'
   $scope.items = [];
   $scope.currentLight = '---';
   $scope.currentTemp = '---';
+  $scope.bootTime = false;
   $scope.tempData = [];
   $scope.lightData = [];
   $scope.windowWidth = $window.innerWidth;
@@ -75,6 +76,9 @@ app.controller('AppCtrl', ['$scope', '$http', '$mdSidenav', '$window', '$filter'
   }
 
   $scope.primus.on('data', function message(data) {
+    if (typeof data.bootTime != 'undefined') {
+      $scope.bootTime = data.bootTime;
+    }
     if (typeof data.statuses != 'undefined') {
       $scope.items = data.statuses;
     }
