@@ -9,6 +9,7 @@ var mosca      = require('mosca')
 
 var config = yaml.sync(path.resolve(__dirname, 'config.yml'));
 var socket = null;
+var clientOnline = false;
 var tzOffset = (new Date().getTimezoneOffset() * 60) * -1;
 
 // Sends time information every 'beaconInterval' seconds
@@ -45,6 +46,57 @@ Status.sync().then(function () { // Ensure table exists before attempting findAl
   });
 });
 
+// Configure sunrise/set data
+var sunRise = config.sun.default.rise || 0;
+var sunSet  = config.sun.default.set || 23;
+var sunSetTime = function() {
+  mqttServer.publish({topic:'sun/set', payload:sunSet.toString(), qos:2, retain:false});
+};
+var sunRiseTime = function() {
+  mqttServer.publish({topic:'sun/rise', payload:sunRise.toString(), qos:2, retain:false});
+};
+
+if (config.sun.wunderground.enable) {
+  var sunStatus = function() {
+   var http = require('http');
+    var options = {
+      host: 'api.wunderground.com',
+      path: '/api/' + config.sun.wunderground.key + '/astronomy/q/' + config.sun.wunderground.state + '/' + config.sun.wunderground.city + '.json'
+    };
+
+    var wuCb = function (res) {
+      if (res.statusCode == 200) {
+        var str = '';
+        res.on('data', function (chunk) {
+          str += chunk;
+        });
+        res.on('end', function() {
+          var data = JSON.parse(str);
+
+          if (typeof data.sun_phase !== 'undefined') {
+            sunRise = parseInt(data.sun_phase.sunrise.hour);
+            sunSet  = parseInt(data.sun_phase.sunset.hour);
+
+            if (parseInt(data.sun_phase.sunrise.minute) < 30) {
+              sunRise--;
+            }
+
+            if (parseInt(data.sun_phase.sunset.minute) < 30) {
+              sunSet--;
+            }
+          }
+          setTimeout(sunSetTime, 1000);
+          setTimeout(sunRiseTime, 3000);
+        });
+      }
+    };
+
+    var req = http.request(options);
+    req.end();
+  };
+  setInterval(sunStatus, 43200000); // Every 12hrs
+}
+
 var mqttServer = mosca.Server(config.mqtt);
 app.express = express;
 require('./routes')(app);
@@ -79,6 +131,10 @@ mqttServer.on('ready', function() {
 
 mqttServer.on('clientConnected', function(client) {
   if (client.id == config.mqtt.client.id) {
+    setTimeout(sunSetTime, 1000);
+    setTimeout(sunRiseTime, 3000);
+
+    clientOnline = true;
     primus.write({
       clientStatus: 'Online'
     });
@@ -87,6 +143,7 @@ mqttServer.on('clientConnected', function(client) {
 
 mqttServer.on('clientDisconnected', function(client) {
   if (client.id == config.mqtt.client.id) {
+    clientOnline = false;
     primus.write({
       clientStatus: 'Offline'
     });
@@ -95,6 +152,20 @@ mqttServer.on('clientDisconnected', function(client) {
 
 mqttServer.on('published', function(packet, client) {
   switch(packet.topic) {
+    case 'client/online':
+      if (parseInt(packet.payload) == 0) {
+        clientOnline = false;
+        primus.write({
+          clientStatus: 'Offline'
+        });
+      }
+      else {
+        clientOnline = true;
+        primus.write({
+          clientStatus: 'Online'
+        });
+      }
+      break;
     case 'coop/temperature':
       var Temperature = app.get('db').Temperature;
       Temperature.create({ reading: parseFloat(packet.payload) });

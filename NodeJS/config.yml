@@ -37,3 +37,12 @@ beacon:
 admin:
   username: admin
   password: secret # Admin password for remote access on frontend.
+sun: # Configuration for night lock
+  default: # default values to use if webservice cannot be reached/not enabled
+    rise: 4 # 4am
+    set: 22 # 10pm
+  wunderground:
+    enabled: false # toggle use of weather underground webservice on/off
+    key: YOURKEY # webservice key from weather underground
+    state: YOURSTATE # Used for webservice call
+    city: YOURCITY # Used for webservice call

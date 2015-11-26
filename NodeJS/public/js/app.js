@@ -80,6 +80,7 @@ app.controller('AppCtrl', ['$scope', '$http', '$mdSidenav', '$window', '$filter'
     }
     if (typeof data.clientStatus != 'undefined') {
       $scope.clientStatus = data.clientStatus;
+      $scope.safeApply();
     }
     if (typeof data.lightReadings != 'undefined') {
       data.lightReadings.forEach(function(reading) {
