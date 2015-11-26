@@ -208,6 +208,14 @@ mqttServer.on('published', function(packet, client) {
 var primus = new Primus(server, { transformer: 'socket.io' });
 
 primus.on('connection', function (spark) {
+  // Send client status:
+  if (clientOnline) {
+    spark.write({clientStatus: 'Online'});
+  }
+  else {
+    spark.write({clientStatus: 'Offline'});
+  }
+
   // Hydrate brightness data
   var Brightness = app.get('db').Brightness;
   Brightness.findAll({
