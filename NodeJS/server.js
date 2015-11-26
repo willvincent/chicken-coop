@@ -81,8 +81,8 @@ if (config.sun.wunderground.enable) {
               sunRise--;
             }
 
-            if (parseInt(data.sun_phase.sunset.minute) < 30) {
-              sunSet--;
+            if (parseInt(data.sun_phase.sunset.minute) > 30) {
+              sunSet++;
             }
           }
           setTimeout(sunSetTime, 1000);
@@ -95,6 +95,7 @@ if (config.sun.wunderground.enable) {
     req.end();
   };
   setInterval(sunStatus, 43200000); // Every 12hrs
+  sunStatus();
 }
 
 var mqttServer = mosca.Server(config.mqtt);
