@@ -872,6 +872,10 @@ void publishReadings() {
 
   char tempStr[5];
   mqtt.publish(pTemp, dtostrf(tempF, 5, 1, tempStr), 2, 0);
+
+  // Since the webapp likes to get confused, lets remind them we're
+  // online every time we update brightness and temp readings...
+  mqtt.publish("client/online", "1", 2, 0);
 }
 
 /**

@@ -154,7 +154,7 @@ mqttServer.on('clientDisconnected', function(client) {
 mqttServer.on('published', function(packet, client) {
   switch(packet.topic) {
     case 'client/online':
-      if (parseInt(packet.payload) == 0) {
+      if (parseInt(packet.payload) === 0) {
         clientOnline = false;
         primus.write({
           clientStatus: 'Offline'
