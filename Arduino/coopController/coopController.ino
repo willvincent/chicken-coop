@@ -13,7 +13,7 @@
 #include "RTClib.h"
 
 // print debug messages or not to serial
-const boolean Debugging = true;
+const int Debugging = 1;
 
 // Digital & analog pins for various components
 const int tempSense     =  6; // DS18S20 Temperature Sensor
@@ -67,6 +67,8 @@ const int chpdPin = 3;
 // MQTT Subscription Channels
 #define sTime    "time/beacon"
 #define sRemote  "coop/remotetrigger"
+#define sSunRise "sun/rise"
+#define sSunSet  "sun/set"
 
 // MQTT Publish Channels
 #define pTemp "coop/temperature"
@@ -94,7 +96,7 @@ const boolean       nightLock      =      true; // Enable night time lockout
 /*************************************************
        DO   NOT   EDIT   BELOW   THIS   LINE
  *************************************************/
- 
+
 // Runtime variables
 int           nightLockStart     =    22; // Hour (in 24hr time) to initiate night time lockout (10pm)
 int           nightLockEnd       =     4; // Hour (in 24hr time) to end night time lockout (4am)
@@ -128,7 +130,7 @@ RTC_DS1307 RTC;
 OneWire ds(tempSense);
 LiquidCrystal lcd(lcd_4, lcd_6, lcd_11, lcd_12, lcd_13, lcd_14);
 
-#if Debugging
+#if Debugging > 0
   ESP esp(&espPort, &debugger, chpdPin);
 #else
   ESP esp(&espPort, chpdPin);
@@ -175,6 +177,13 @@ void mqttConnected(void* response) {
 
   // Subscribe to remote trigger channel to allow remote control of chicken coop
   mqtt.subscribe(sRemote, 2);
+
+  // Subscribe to sunrise/set updates
+  mqtt.subscribe(sSunRise, 2);
+  mqtt.subscribe(sSunSet, 2);
+  
+  // Publish that we're online!
+  mqtt.publish("client/online", "1", 2, 0);
 }
 
 /**
@@ -196,14 +205,14 @@ void mqttPublished(void* response) {
   RESPONSE res(response);
   String topic = res.popString();
   String data  = res.popString();
-  if (Debugging) {
+/*  if (Debugging) {
     if (topic != "time/beacon") {
       debugger.print("MQTT Data published to channel '");
       debugger.print(topic);
       debugger.print("': ");
       debugger.println(data);
     }
-  }
+  } */
 }
 
 /**
@@ -215,12 +224,6 @@ void mqttData(void* response) {
   RESPONSE res(response);
   String topic = res.popString();
   String data  = res.popString();
-  if (Debugging) {
-    debugger.print("MQTT Data Received on channel '");
-    debugger.print(topic);
-    debugger.print("': ");
-    debugger.println(data);
-  }
 
   if (topic == sRemote) {
     // If door movement is triggered, toggle door state to
@@ -253,6 +256,23 @@ void mqttData(void* response) {
     if (data == "fan") {
       toggleFan();
       remoteLockStart = millis();
+    }
+  }
+
+  // Adjust sunrise/set times for nightlock
+  if (topic == sSunRise) {
+    nightLockEnd = atoi(data.c_str());
+    if (Debugging) {
+      debugger.print("Night lock end updated to: ");
+      debugger.println(nightLockEnd);
+    }
+  }
+  
+  if (topic == sSunSet) {
+    nightLockStart = atoi(data.c_str());
+    if (Debugging) {
+      debugger.print("Night lock start updated to: ");
+      debugger.println(nightLockStart);
     }
   }
 
@@ -289,7 +309,7 @@ void mqttData(void* response) {
           debugger.println("am");
         }
       }
-    } 
+    }
   }
 }
 
@@ -399,7 +419,7 @@ float getTemp() {
 
   ds.reset();
   ds.select(addr);
-  ds.write(0x44,1); // Start conversation, with parasite power on at the end
+  ds.write(0x44, 1); // Start conversation, with parasite power on at the end
 
   byte present = ds.reset();
   ds.select(addr);
@@ -431,7 +451,7 @@ void updateLCD() {
   boolean hStat = heaterState;
   String dStat = doorState;
   DateTime now = RTC.now();
-  
+
   if ((unsigned long)millis() - lastLCDChange > lcdChange) {
     lcdPage++;
     if (lcdPage > 3) {
@@ -440,18 +460,18 @@ void updateLCD() {
     lastLCDChange = millis();
     lcd.clear();
   }
-  
+
   if (lcdPage == 0) {
     char tempStr[5];
-    lcd.setCursor(0,0);
+    lcd.setCursor(0, 0);
     lcd.print("TEMP  SUN  DOOR ");
-    lcd.setCursor(0,1);
+    lcd.setCursor(0, 1);
     lcd.print(dtostrf(tmpF, 4, 1, tempStr));
     lcd.print("F");
-    lcd.setCursor(6,1);
+    lcd.setCursor(6, 1);
     lcd.print(sun);
-    lcd.print("%");    
-    lcd.setCursor(11,1);
+    lcd.print("%");
+    lcd.setCursor(11, 1);
     if (dStat == "open") {
       lcd.print("Open");
     }
@@ -463,9 +483,9 @@ void updateLCD() {
     }
   }
   else if (lcdPage == 1) {
-    lcd.setCursor(0,0);
+    lcd.setCursor(0, 0);
     lcd.print("LAMP  FAN  HEAT");
-    lcd.setCursor(0,1);
+    lcd.setCursor(0, 1);
     if (lStat) {
       lcd.print("On   ");
     }
@@ -473,19 +493,19 @@ void updateLCD() {
       lcd.print("Off  ");
     }
     if (fStat) {
-      lcd.setCursor(6,1);
+      lcd.setCursor(6, 1);
       lcd.print("On   ");
     }
     else {
-      lcd.setCursor(6,1);
+      lcd.setCursor(6, 1);
       lcd.print("Off ");
     }
     if (hStat) {
-      lcd.setCursor(11,1);
+      lcd.setCursor(11, 1);
       lcd.print("On   ");
     }
     else {
-      lcd.setCursor(11,1);
+      lcd.setCursor(11, 1);
       lcd.print("Off  ");
     }
   }
@@ -506,9 +526,9 @@ void updateLCD() {
       hr = 12;
     }
     sprintf(timeStr, "%02d:%02d:%02d", hr, now.minute(), now.second());
-    lcd.setCursor(3,0);
+    lcd.setCursor(3, 0);
     lcd.print(dateStr);
-    lcd.setCursor(3,1);
+    lcd.setCursor(3, 1);
     lcd.print(timeStr);
     if (ampm) {
       lcd.print("pm");
@@ -525,12 +545,12 @@ void updateLCD() {
     sec = sec % 3600;
     int min = floor(sec / 60);
     sec = sec % 60;
-    
+
     char uTime[16];
     sprintf(uTime, "%03dd %02dh %02dm %02ds", day, hour, min, sec);
-    lcd.setCursor(5,0);
+    lcd.setCursor(5, 0);
     lcd.print("UPTIME");
-    lcd.setCursor(0,1);
+    lcd.setCursor(0, 1);
     lcd.print(uTime);
   }
 }
@@ -540,9 +560,9 @@ void updateLCD() {
  */
 void lcdWrite(char *firstLine = "", char *secondLine = "") {
   lcd.clear();
-  lcd.setCursor(0,0);
+  lcd.setCursor(0, 0);
   lcd.print(firstLine);
-  lcd.setCursor(0,1);
+  lcd.setCursor(0, 1);
   lcd.print(secondLine);
   if (Debugging) {
     debugger.println("Output to LCD:");
@@ -578,46 +598,46 @@ void doorLEDs() {
 /**
  * Handle movement of the door
  */
- void doorMove() {
-   debounceDoor();
-   doorStatePrev = doorState;
-   if (doorState == "closed" || doorState == "closing") {
-     if (doorBottomState != 0) {
-       // Door isn't closed, run motor until it is.
-       digitalWrite(doorClose, HIGH);
-       digitalWrite(doorOpen, LOW);
-       digitalWrite(doorSpeed, HIGH);
-     }
-     else {
-       // Door is closed, stop motor
-       digitalWrite(doorClose, LOW);
-       digitalWrite(doorOpen, LOW);
-       digitalWrite(doorSpeed, LOW);
-       doorState = "closed";
-       if (doorStatePrev != doorState && wifiConnected) {
-         mqtt.publish("coop/status", "door|closed", 2, 0);
-       }
-     }
-   }
-   else {
-     if (doorTopState != 0) {
-       // Door isn't open, run motor until it is.
-       digitalWrite(doorClose, LOW);
-       digitalWrite(doorOpen, HIGH);
-       digitalWrite(doorSpeed, HIGH);
-     }
-     else {
-       // Door is open, stop motor.
-       digitalWrite(doorClose, LOW);
-       digitalWrite(doorOpen, LOW);
-       digitalWrite(doorSpeed, LOW);
-       doorState = "open";
-       if (doorStatePrev != doorState && wifiConnected) {
-         mqtt.publish("coop/status", "door|open", 2, 0);
-       }
-     }
-   }
- }
+void doorMove() {
+  debounceDoor();
+  doorStatePrev = doorState;
+  if (doorState == "closed" || doorState == "closing") {
+    if (doorBottomState != 0) {
+      // Door isn't closed, run motor until it is.
+      digitalWrite(doorClose, HIGH);
+      digitalWrite(doorOpen, LOW);
+      digitalWrite(doorSpeed, HIGH);
+    }
+    else {
+      // Door is closed, stop motor
+      digitalWrite(doorClose, LOW);
+      digitalWrite(doorOpen, LOW);
+      digitalWrite(doorSpeed, LOW);
+      doorState = "closed";
+      if (doorStatePrev != doorState && wifiConnected) {
+        mqtt.publish("coop/status", "door|closed", 2, 0);
+      }
+    }
+  }
+  else {
+    if (doorTopState != 0) {
+      // Door isn't open, run motor until it is.
+      digitalWrite(doorClose, LOW);
+      digitalWrite(doorOpen, HIGH);
+      digitalWrite(doorSpeed, HIGH);
+    }
+    else {
+      // Door is open, stop motor.
+      digitalWrite(doorClose, LOW);
+      digitalWrite(doorOpen, LOW);
+      digitalWrite(doorSpeed, LOW);
+      doorState = "open";
+      if (doorStatePrev != doorState && wifiConnected) {
+        mqtt.publish("coop/status", "door|open", 2, 0);
+      }
+    }
+  }
+}
 
 /**
  * Read current sensor data
@@ -745,7 +765,7 @@ void handleSensorReadings() {
     }
   }
   // Otherwise, handle brightness level based reactions
-  
+
   // NOTE: We need a bit of a gap between these thresholds to prevent
   // bouncing if light readings fluctuate by a percentage or two.
   else {
@@ -767,7 +787,7 @@ void handleSensorReadings() {
         toggleLamp();
       }
     }
-    
+
     // Open door when brightness level is greater than 5%
     if (brightness >= 5) {
       if (doorState == "closed") {
@@ -849,7 +869,7 @@ void debounceDoor() {
 void publishReadings() {
   char briStr[3];
   mqtt.publish(pLight, dtostrf(brightness, 3, 0, briStr), 2, 0);
-  
+
   char tempStr[5];
   mqtt.publish(pTemp, dtostrf(tempF, 5, 1, tempStr), 2, 0);
 }
@@ -869,8 +889,8 @@ void setup() {
   // Set the boot timestamp.
   DateTime now = RTC.now();
   bootTime = now.unixtime();
-  
-  lcd.begin(16,2);
+
+  lcd.begin(16, 2);
   lcdWrite("Initializing...");
 
   espPort.begin(19200);
@@ -878,8 +898,8 @@ void setup() {
   delay(500);
   esp.reset();
   delay(500);
-  while(!esp.ready());
-  
+  while (!esp.ready());
+
   if (Debugging) {
     debugger.println("ARDUINO: Setup MQTT client");
   }
@@ -889,9 +909,9 @@ void setup() {
       debugger.println("ARDUINO: Failed to setup MQTT");
     }
     lcdWrite("MQTT Connect", "Failure");
-    while(1);
+    while (1);
   }
-  mqtt.lwt("lwt", "Offline");
+  mqtt.lwt("client/online", "0");
 
   mqtt.connectedCb.attach(&mqttConnected);
   mqtt.disconnectedCb.attach(&mqttDisconnected);
@@ -959,24 +979,24 @@ void loop() {
 
     // Read new data from sensors
     readSensors();
-   
-    if (remoteLockStart == 0 || 
+
+    if (remoteLockStart == 0 ||
         (unsigned long)(millis() - remoteLockStart) > remoteOverride) {
       // Respond ot sensor data
       handleSensorReadings();
     }
-    
+
     // Only publish new sensor data if it's been long enough since the last reading.
-    if (lastPublish == 0 || (unsigned long)(millis() - lastPublish) > publishInterval) {  
+    if (lastPublish == 0 || (unsigned long)(millis() - lastPublish) > publishInterval) {
       if (wifiConnected) {
         publishReadings();
       }
       lastPublish = millis();
     }
-  
+
     // Move the door as needed
     doorMove();
-  
+
     // Update door LEDs as needed
     doorLEDs();
 
