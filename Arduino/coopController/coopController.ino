@@ -13,7 +13,7 @@
 #include "RTClib.h"
 
 // print debug messages or not to serial
-const int Debugging = 1;
+const int Debugging = 0;
 
 // Digital & analog pins for various components
 const int tempSense     =  6; // DS18S20 Temperature Sensor
@@ -22,13 +22,13 @@ const int lampRelay     = 10; // Lamp Relay
 const int heaterRelay   =  9; // Water Heater Relay
 const int doorOpen      = 35; // MotorA left
 const int doorClose     = 36; // MotorA right
-const int doorSpeed     = 37; // MotorA speed
+const int doorEnable    = 37; // MotorA enable
 const int doorTop       = 51; // Reed Switch
 const int doorBottom    = 53; // Reed Switch
 const int doorOpenLED   = 11; // Indicator light (blinks during open/close steady on when open)
 const int doorClosedLED = 12; // Indicator Light (blinks during open/close steady on when closed)
 const int fan           = 38; // MotorB left
-const int fanSpeed      = 39; // MotorB speed
+const int fanEnable     = 39; // MotorB enable
 const int rtcSDA        = 20; // Real Time Clock SDA (i2c arduino mega)
 const int rtcSCL        = 21; // Real Time Clock SCL (i2c arduino mega)
 
@@ -369,7 +369,7 @@ void toggleHeater() {
 void toggleFan() {
   if (fanState) {
     digitalWrite(fan, LOW);
-    digitalWrite(fanSpeed, LOW);
+    digitalWrite(fanEnable, HIGH);
     if (Debugging) {
       debugger.println("Fan off.");
     }
@@ -379,7 +379,7 @@ void toggleFan() {
   }
   else {
     digitalWrite(fan, HIGH);
-    digitalWrite(fanSpeed, HIGH);
+    digitalWrite(fanEnable, HIGH);
     if (Debugging) {
       debugger.println("Fan on.");
     }
@@ -606,13 +606,13 @@ void doorMove() {
       // Door isn't closed, run motor until it is.
       digitalWrite(doorClose, HIGH);
       digitalWrite(doorOpen, LOW);
-      digitalWrite(doorSpeed, HIGH);
+      digitalWrite(doorEnable, HIGH);
     }
     else {
       // Door is closed, stop motor
       digitalWrite(doorClose, LOW);
       digitalWrite(doorOpen, LOW);
-      digitalWrite(doorSpeed, LOW);
+      digitalWrite(doorEnable, HIGH);
       doorState = "closed";
       if (doorStatePrev != doorState && wifiConnected) {
         mqtt.publish("coop/status", "door|closed", 2, 0);
@@ -624,13 +624,13 @@ void doorMove() {
       // Door isn't open, run motor until it is.
       digitalWrite(doorClose, LOW);
       digitalWrite(doorOpen, HIGH);
-      digitalWrite(doorSpeed, HIGH);
+      digitalWrite(doorEnable, HIGH);
     }
     else {
       // Door is open, stop motor.
       digitalWrite(doorClose, LOW);
       digitalWrite(doorOpen, LOW);
-      digitalWrite(doorSpeed, LOW);
+      digitalWrite(doorEnable, HIGH);
       doorState = "open";
       if (doorStatePrev != doorState && wifiConnected) {
         mqtt.publish("coop/status", "door|open", 2, 0);
@@ -931,26 +931,26 @@ void setup() {
   pinMode(heaterRelay, OUTPUT);
   pinMode(doorOpen, OUTPUT);
   pinMode(doorClose, OUTPUT);
-  pinMode(doorSpeed, OUTPUT);
+  pinMode(doorEnable, OUTPUT);
   pinMode(doorOpenLED, OUTPUT);
   pinMode(doorClosedLED, OUTPUT);
   pinMode(doorTop, INPUT);
   pinMode(doorBottom, INPUT);
   pinMode(fan, OUTPUT);
-  pinMode(fanSpeed, OUTPUT);
+  pinMode(fanEnable, OUTPUT);
 
   // Pin defaults
   digitalWrite(lampRelay, LOW);
   digitalWrite(heaterRelay, LOW);
   digitalWrite(doorOpen, LOW);
   digitalWrite(doorClose, LOW);
-  digitalWrite(doorSpeed, LOW);
+  digitalWrite(doorEnable, HIGH);
   digitalWrite(doorOpenLED, LOW);
   digitalWrite(doorClosedLED, HIGH);
   digitalWrite(doorTop, HIGH);    // Enable resistor
   digitalWrite(doorBottom, HIGH); // Enable resistor
   digitalWrite(fan, LOW);
-  digitalWrite(fanSpeed, LOW);
+  digitalWrite(fanEnable, HIGH);
 
   lcdWrite("System Ready");
 }
