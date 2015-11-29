@@ -74,16 +74,8 @@ if (config.sun.wunderground.enable) {
           var data = JSON.parse(str);
 
           if (typeof data.sun_phase !== 'undefined') {
-            sunRise = parseInt(data.sun_phase.sunrise.hour);
-            sunSet  = parseInt(data.sun_phase.sunset.hour);
-
-            if (parseInt(data.sun_phase.sunrise.minute) < 30) {
-              sunRise--;
-            }
-
-            if (parseInt(data.sun_phase.sunset.minute) > 30) {
-              sunSet++;
-            }
+            sunRise = parseInt(data.sun_phase.sunrise.hour) - 1;
+            sunSet  = parseInt(data.sun_phase.sunset.hour) + 1;
           }
           setTimeout(sunSetTime, 1000);
           setTimeout(sunRiseTime, 3000);
@@ -170,18 +162,24 @@ mqttServer.on('published', function(packet, client) {
     case 'coop/temperature':
       var Temperature = app.get('db').Temperature;
       Temperature.create({ reading: parseFloat(packet.payload) });
-      primus.write({
-        update: {
-          temp: parseFloat(packet.payload)
+      primus.write({ update: { temp: parseFloat(packet.payload) }});
+      Temperature.destroy({
+        where: {
+          createdAt: {
+            $lt: moment().subtract(6, 'hours').format('YYYY-MM-DD HH:mm:ss')
+          }
         }
       });
       break;
     case 'coop/brightness':
       var Brightness = app.get('db').Brightness;
       Brightness.create({ reading: parseInt(packet.payload) });
-      primus.write({
-        update: {
-          light: parseInt(packet.payload)
+      primus.write({ update: { light: parseInt(packet.payload) }});
+      Brightness.destroy({
+        where: {
+          createdAt: {
+            $lt: moment().subtract(6, 'hours').format('YYYY-MM-DD HH:mm:ss')
+          }
         }
       });
       break;
@@ -208,12 +206,12 @@ mqttServer.on('published', function(packet, client) {
 var primus = new Primus(server, { transformer: 'socket.io' });
 
 primus.on('connection', function (spark) {
-  // Send client status:
+  // Send client status
   if (clientOnline) {
-    spark.write({clientStatus: 'Online'});
+    spark.write({clientStatus:'Online'});
   }
   else {
-    spark.write({clientStatus: 'Offline'});
+    spark.write({clientStatus:'Offline'});
   }
 
   // Hydrate brightness data
@@ -221,7 +219,7 @@ primus.on('connection', function (spark) {
   Brightness.findAll({
     where: {
       createdAt: {
-        $gt: moment().subtract(24, 'hours').format('YYYY-MM-DD HH:mm:ss')
+        $gt: moment().subtract(6, 'hours').format('YYYY-MM-DD HH:mm:ss')
       }
     },
     order: [ ['createdAt', 'ASC'] ],
@@ -242,7 +240,7 @@ primus.on('connection', function (spark) {
   Temperature.findAll({
     where: {
       createdAt: {
-        $gt: moment().subtract(24, 'hours').format('YYYY-MM-DD HH:mm:ss')
+        $gt: moment().subtract(6, 'hours').format('YYYY-MM-DD HH:mm:ss')
       }
     },
     order: [ ['createdAt', 'ASC'] ],
